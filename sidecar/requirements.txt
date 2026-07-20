@@ -1,0 +1,9 @@
+# Sidecar-only deps. The inference CLIs (audio-separator, bs-roformer-infer,
+# melband-roformer-infer + torch) live in a separate env pointed to by
+# STEMAPP_TOOLS_BIN; see README.
+fastapi
+uvicorn
+# chord recognition; the PyPI release (0.16.1, 2018) doesn't build on
+# modern Python, so pin a known-good dev commit. Models ship in the package
+# (CC BY-NC-SA 4.0 — non-commercial, fine for this app, don't resell).
+madmom @ git+https://github.com/CPJKU/madmom.git@27f032e8947204902c675e5e341a3faf5dc86dae

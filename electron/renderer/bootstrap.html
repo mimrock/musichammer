@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'unsafe-inline'; script-src 'self'" />
+  <title>MusicHammer — first run</title>
+  <style>
+    /* mirrors style.css's rack look; inline so this page has zero deps */
+    :root {
+      --bg: #141210; --raise: #1c1916; --line: #2e2822;
+      --line-strong: #3a332b; --text: #ede6db; --muted: #9c9184;
+      --amber: #e8a33d; --red: #e2594c;
+      --display: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+      --mono: 'IBM Plex Mono', monospace;
+    }
+    * { margin: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--display); padding: 28px;
+      user-select: none; -webkit-user-select: none;
+    }
+    .hidden { display: none !important; }
+    .wordmark { font-size: 22px; letter-spacing: 3px; font-weight: 600; }
+    .wordmark span { color: var(--amber); }
+    .sub { color: var(--muted); margin-top: 6px; font-size: 14px; }
+
+    /* consent view */
+    #consent p { margin-top: 14px; font-size: 14px; line-height: 1.45; }
+    #consent p.warn { color: var(--amber); }
+    #consent p.dim { color: var(--muted); font-size: 13px; }
+    #consent .actions { display: flex; }
+
+    /* progress view */
+    #stage { margin-top: 26px; font-size: 16px; min-height: 22px; }
+    .bar {
+      margin-top: 10px; height: 8px; background: var(--raise);
+      border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden;
+    }
+    #fill {
+      height: 100%; width: 0%; background: var(--amber);
+      transition: width .2s ease;
+    }
+    /* no percentage known: a sweeping segment says "alive, still working" */
+    #fill.indet {
+      width: 35%; transition: none;
+      animation: indet 1.4s ease-in-out infinite alternate;
+    }
+    @keyframes indet {
+      from { margin-left: -5%; }
+      to { margin-left: 70%; }
+    }
+    #details-toggle {
+      margin-top: 12px; padding: 0; background: none; border: none;
+      color: var(--muted); font-family: var(--display); font-size: 13px;
+      letter-spacing: .5px; cursor: pointer;
+    }
+    #details-toggle:hover { color: var(--text); }
+    #log {
+      margin-top: 8px; height: 150px; overflow-y: auto;
+      background: var(--raise); border: 1px solid var(--line);
+      border-radius: 4px; padding: 8px 10px;
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      white-space: pre-wrap; word-break: break-all;
+    }
+    #error {
+      display: none; margin-top: 14px; color: var(--red); font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .actions { display: none; margin-top: 16px; gap: 10px; }
+    button {
+      font-family: var(--display); font-size: 14px; letter-spacing: 1px;
+      padding: 8px 18px; border-radius: 4px; cursor: pointer;
+      background: var(--amber); color: #1a1409; border: none;
+    }
+    button.ghost { background: none; color: var(--muted);
+                   border: 1px solid var(--line-strong); }
+  </style>
+</head>
+<body>
+  <div class="wordmark">MUSIC <span>HAMMER</span></div>
+  <div class="sub">First-run setup</div>
+
+  <div id="consent" class="hidden">
+    <p>MusicHammer runs its audio engine locally, and that engine has to be
+    downloaded once: Python, PyTorch and the separation stack —
+    about <b id="dl-size"></b> to download, <b id="disk-size"></b> of disk
+    space once installed.</p>
+    <p id="cuda-note" class="hidden">An NVIDIA GPU was detected, so the larger
+    CUDA build will be installed — separations will run many times faster.</p>
+    <p class="warn">Avoid doing this on a metered or mobile connection.
+    Nothing has been downloaded yet — you can safely quit and come back
+    on a better network.</p>
+    <p class="dim">Separation models (≈0.7 GB each) are not part of this —
+    you pick and download those later, inside the app.</p>
+    <div class="actions" id="consent-actions">
+      <button id="start">Download &amp; install</button>
+      <button id="quit-consent" class="ghost">Quit</button>
+    </div>
+  </div>
+
+  <div id="progress">
+    <div id="stage">Checking your hardware…</div>
+    <div class="bar"><div id="fill" class="indet"></div></div>
+    <button id="details-toggle">Show details ▸</button>
+    <div id="log" class="hidden"></div>
+    <div id="error"></div>
+    <div class="actions" id="actions">
+      <button id="retry">Retry</button>
+      <button id="quit" class="ghost">Quit</button>
+    </div>
+  </div>
+  <script src="bootstrap-page.js"></script>
+</body>
+</html>

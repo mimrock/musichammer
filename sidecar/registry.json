@@ -1,0 +1,85 @@
+{
+  "registry_version": 2,
+  "note": "Weights are downloaded from the ORIGINAL community/vendor repos on the user's machine; this app never redistributes them. URLs + LFS sha256s verified against the HF API on 2026-07-05 (they match the checkpoints used in the pre-release model evaluation). Configs are vendored (patched) in sidecar/configs/.",
+  "models": [
+    {
+      "id": "htdemucs_6s",
+      "display_name": "Demucs v4 (6 stems)",
+      "arch": "demucs",
+      "runner": "audio_separator",
+      "runner_model_name": "htdemucs_6s.yaml",
+      "managed_by_runner": true,
+      "stems": ["vocals", "drums", "bass", "guitar", "piano", "other"],
+      "license": "MIT (Meta)",
+      "license_ok_redistribute": true,
+      "cpu_x_realtime": 0.7,
+      "notes": "weights auto-downloaded by audio-separator from Meta's official bucket on first use; fastest model, guitar has more bleed than the RoFormers"
+    },
+    {
+      "id": "bs_roformer_sw",
+      "display_name": "BS-RoFormer SW (6 stems, best guitar quality)",
+      "arch": "bs_roformer",
+      "runner": "bs_roformer_infer",
+      "config": "configs/BS-Rofo-SW-Fixed.yaml",
+      "files": [
+        {
+          "name": "BS-Rofo-SW-Fixed.ckpt",
+          "url": "https://huggingface.co/enerjazzer/BS-ROFO-SW-Fixed/resolve/main/BS-Rofo-SW-Fixed.ckpt",
+          "size": 699412152,
+          "sha256": "24e7d35ee9c64415673d3fd33e06a67cac2c103c5df6267ba1576459c775916e"
+        }
+      ],
+      "stems": ["vocals", "drums", "bass", "guitar", "piano", "other"],
+      "license": "unknown (anonymous author 'SW', no license grant)",
+      "license_ok_redistribute": false,
+      "cpu_x_realtime": 5.7,
+      "notes": "vendored config adds inference.chunk_size (upstream yaml crashes the runner from track 2 on)"
+    },
+    {
+      "id": "melband_guitar_becruily",
+      "display_name": "Mel-RoFormer Guitar (becruily)",
+      "arch": "mel_band_roformer",
+      "runner": "melband_roformer_infer",
+      "config": "configs/config_guitar_becruily.yaml",
+      "files": [
+        {
+          "name": "becruily_guitar.ckpt",
+          "url": "https://huggingface.co/becruily/mel-band-roformer-guitar/resolve/main/becruily_guitar.ckpt",
+          "size": 45142183,
+          "sha256": "83472bbf125774af5282d2e0b86df89eaf2dd45e8a4ec8d68e820ebf3e42a83c"
+        }
+      ],
+      "stems": ["guitar", "rest"],
+      "license": "none declared",
+      "license_ok_redistribute": false,
+      "cpu_x_realtime": 2.7,
+      "notes": "runner needs the mel_band_roformer mlp_expansion_factor patch (vendored in the frozen env; dev: patched in stem/.venv); sometimes misses acoustic guitar"
+    },
+    {
+      "id": "melband_instrumental_becruily",
+      "display_name": "Mel-RoFormer Instrumental / de-vocal (becruily)",
+      "arch": "mel_band_roformer",
+      "runner": "audio_separator",
+      "runner_model_name": "mel_band_roformer_instrumental_becruily.ckpt",
+      "managed_by_runner": true,
+      "stems": ["instrumental", "vocals"],
+      "license": "none declared",
+      "license_ok_redistribute": false,
+      "cpu_x_realtime": 2.8,
+      "role": "preprocessor for the devocal->demucs pipeline",
+      "notes": "checkpoint sha256 of the copy used in the eval: a8da6632a1c25efb1c9be783ce9ea367d226d4b918cd6c3717c8b1d7a396041d"
+    }
+  ],
+  "pipelines_todo": [
+    {
+      "id": "devocal_htdemucs",
+      "steps": ["melband_instrumental_becruily", "htdemucs_6s"],
+      "note": "M2+: RoFormer vocals kept; demucs re-splits the instrumental"
+    },
+    {
+      "id": "ensemble_guitar",
+      "steps": ["htdemucs_6s", "bs_roformer_sw"],
+      "note": "M2+: avg_wave / max_fft guitar ensembles; resample first (demucs always emits 44.1k, roformers keep input rate)"
+    }
+  ]
+}

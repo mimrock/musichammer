@@ -1,0 +1,66 @@
+{
+  "name": "musichammer",
+  "productName": "MusicHammer",
+  "version": "0.1.0",
+  "description": "Local, offline music stem separation with a focus on guitar",
+  "author": {
+    "name": "mimrock",
+    "email": "mimrock@users.noreply.github.com"
+  },
+  "main": "electron/main.js",
+  "private": true,
+  "license": "MIT",
+  "repository": "github:mimrock/musichammer",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "io.github.mimrock.musichammer",
+    "productName": "MusicHammer",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "sidecar",
+        "to": "sidecar",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**"
+        ]
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Audio",
+      "icon": "assets/icon.png",
+      "synopsis": "Stem separation for practicing musicians"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "include": "assets/installer.nsh"
+    }
+  }
+}

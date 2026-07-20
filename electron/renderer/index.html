@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src http://127.0.0.1:*; media-src http://127.0.0.1:*; style-src 'self'; script-src 'self'" />
+  <title>MusicHammer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="wordmark">MUSIC <span>HAMMER</span></div>
+    <div class="header-actions">
+      <span id="sidecar-status" class="engine"><span class="led"></span>ENGINE …</span>
+      <button id="btn-models">Models</button>
+      <button id="btn-add" class="primary">Add songs</button>
+    </div>
+  </header>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <main>
+    <div id="onboarding" class="onboard hidden"></div>
+    <div id="library-bar" class="library-bar hidden">
+      <label class="sep-label" for="sort-select">sort by</label>
+      <select id="sort-select">
+        <option value="added">Newest</option>
+        <option value="title">Title A–Z</option>
+        <option value="duration">Longest first</option>
+      </select>
+    </div>
+    <div id="songs-list"></div>
+  </main>
+
+  <div id="confirm-scrim" class="scrim hidden"></div>
+  <div id="confirm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-body"></p>
+    <div class="modal-actions">
+      <button id="confirm-cancel" class="ghost">Cancel</button>
+      <button id="confirm-ok" class="danger">Delete song</button>
+    </div>
+  </div>
+
+  <div id="drawer-scrim" class="scrim hidden"></div>
+  <aside id="models-panel" class="drawer hidden" aria-label="Models">
+    <div class="drawer-head">
+      <h2>Models</h2>
+      <button id="models-close" class="ghost">Close</button>
+    </div>
+    <p class="drawer-sub">A model is the neural net that pulls a mix apart —
+    each one splits differently. Downloaded once from its author's repository,
+    then everything runs offline.</p>
+    <div id="models-list"></div>
+  </aside>
+
+  <section id="mixer" class="mixer hidden">
+    <div class="mixer-inner">
+      <div class="mixer-head">
+        <div>
+          <span id="mixer-title" class="song-title"></span>
+          <span id="mixer-model" class="song-meta"></span>
+        </div>
+        <button id="mixer-close" class="ghost">✕ Close</button>
+      </div>
+      <div class="transport">
+        <button id="mixer-play" class="primary">▶ Play</button>
+        <span id="mixer-time">0:00 / 0:00</span>
+        <div class="tempo" title="Playback speed — pitch stays put">
+          <span class="sep-label">tempo</span>
+          <button id="tempo-down" class="sq">−</button>
+          <span id="tempo-pct" title="Click to reset to 100%">100%</span>
+          <button id="tempo-up" class="sq">+</button>
+          <span id="tempo-bpm" class="hidden"></span>
+        </div>
+        <div id="chord-box" class="chord hidden"
+             title="Chord under the playhead — approximate. Root+5 means a power chord (no third audible).">
+          <span class="sep-label">chord</span>
+          <span id="chord-busy" class="chord-busy hidden"><span class="led busy"></span>finding chords…</span>
+          <span id="chord-now"></span>
+          <span id="chord-next"></span>
+        </div>
+        <span id="mixer-loading" class="hidden">loading stems…</span>
+      </div>
+      <div id="mixer-tracks"></div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
