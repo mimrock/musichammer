@@ -10,6 +10,10 @@ To build from source: `./setup.sh cpu` (or `cuda`) on Linux, then `./dev.sh`.
 
 License: MIT.
 
+## Download
+
+[v0.1.1](https://github.com/mimrock/musichammer/releases/tag/v0.1.1) binaries for windows (10/11) and linux (AppImage / .deb)
+
 ## Models
 
 Supported stem separator models are:
