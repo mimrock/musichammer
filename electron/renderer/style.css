@@ -265,7 +265,17 @@ main { padding: 18px 22px 60px; }
   gap: 12px;
 }
 
-.song-title { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.song-headline { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.song-title { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; min-width: 0; }
+.sep-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+  white-space: nowrap;
+  flex: none;
+}
 .song-side { display: flex; align-items: center; gap: 12px; flex: none; }
 .song-head .del {
   font-size: 10px;
@@ -303,7 +313,16 @@ main { padding: 18px 22px 60px; }
   color: var(--text);
 }
 .mix-btn:hover { border-color: var(--amber); background: var(--raise2); }
-.mix-btn .tri { color: var(--amber); font-size: 11px; flex: none; }
+.mix-btn .open-cue {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  white-space: nowrap;
+  flex: none;
+}
 .mix-btn .take-meta {
   margin-left: auto;
   font-family: var(--mono);

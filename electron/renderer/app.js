@@ -307,9 +307,13 @@ function renderSongs() {
 
   for (const s of [...songs].sort(SORTS[sortBy])) {
     const card = el('div', 'song-card');
+    const hasStems = Object.keys(s.stems || {}).length > 0;
 
     const head = el('div', 'song-head');
-    head.append(el('span', 'song-title', s.title));
+    const headline = el('span', 'song-headline');
+    headline.append(el('span', 'song-title', s.title));
+    if (hasStems) headline.append(el('span', 'sep-badge', '✓ separated'));
+    head.append(headline);
     const side = el('span', 'song-side');
     side.append(el('span', 'song-meta', fmtTime(s.duration_s)));
     const del = btn('Delete', 'ghost del', () => confirmDelete(s));
@@ -323,9 +327,9 @@ function renderSongs() {
       const n = Object.keys(info.files || {}).length;
       const m = models.find((x) => x.id === modelId);
       const open = el('button', 'mix-btn');
-      open.append(el('span', 'tri', '▶'),
-                  el('span', null, info.model_display_name || (m ? m.display_name : modelId)),
-                  el('span', 'take-meta', `${n} stems · open mixer`));
+      open.append(el('span', null, info.model_display_name || (m ? m.display_name : modelId)),
+                  el('span', 'take-meta', `${n} stems`),
+                  el('span', 'open-cue', 'open mixer ▸'));
       open.title = 'Open in the mixer — solo or mute each instrument';
       open.onclick = () => openMixer(s, modelId);
       card.append(open);
@@ -363,7 +367,10 @@ function renderSongs() {
           sel.value = RECOMMENDED_MODEL;
         }
         sel.onchange = () => { chosenModel[s.id] = sel.value; };
-        controls.append(sel, btn('Separate stems', 'primary',
+        // once stems exist, re-separating is a side path — the mixer row is
+        // the card's main action, so this button demotes to ghost
+        controls.append(sel, btn(hasStems ? 'Separate again' : 'Separate stems',
+          hasStems ? 'ghost' : 'primary',
           () => api('/jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
