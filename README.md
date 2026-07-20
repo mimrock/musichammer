@@ -10,6 +10,39 @@ To build from source: `./setup.sh cpu` (or `cuda`) on Linux, then `./dev.sh`.
 
 License: MIT.
 
+## Models
+
+Supported stem separator models are:
+- Demucs v4
+	- Automatically installed on first use
+	- Reasonably fast on CPU (~1x the song length)
+	- MIT license
+	- Acceptable stem separation quality for 6 stems
+	
+- BS-RoFormer SW
+	- Installed manually by clicking on the Download button (667 MiB)
+	- Very slow on CPU (5-10x the song length), much quicker on NVIDIA GPU
+	- Unknown license (anonymous author)
+	- Best stem separation quality for 6 stems
+	
+- Mel-RoFormer Instrumental
+	- Automatically installed on first use
+	- Moderate performance on CPU (~2-3x the song length), much quicker on NVIDIA GPU
+	- No declared license
+	- Only separates 2 stems (vocals, instrumental)
+	- Best for karaoke
+	
+- Mel-RoFormer Guitar
+	- Installed manually by clicking on the Download button (43 MiB)
+	- Moderate performance on CPU (~2-3x the song length), much quicker on NVIDIA GPU
+	- No declared license
+	- Only separates 2 stems (guitar, everything else)
+	- Guitar separation quality (especially for distorted guitar) is close to BS-RoFormer SW
+	
+## Screens
+
+![Songlist](screenshots/songlist.png) ![Mixer](screenshots/mixer.png)
+
 ## Note
 
 This software is in early development. It may eat your computer for lunch if it feels like it. I make no gurantees that it will work for you or is safe to use. Use at your own risk!
