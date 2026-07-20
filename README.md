@@ -9,3 +9,7 @@ The Windows installer is unsigned, so SmartScreen will warn you the first time â
 To build from source: `./setup.sh cpu` (or `cuda`) on Linux, then `./dev.sh`.
 
 License: MIT.
+
+## Note
+
+This software is in early development. It may eat your computer for lunch if it feels like it. I make no gurantees that it will work for you or is safe to use. Use at your own risk!
