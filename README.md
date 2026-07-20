@@ -41,7 +41,7 @@ Supported stem separator models are:
 	
 ## Screens
 
-![Songlist](screenshots/songlist.png) ![Mixer](screenshots/mixer.png)
+![Songlist](screens/songlist.png) ![Mixer](screens/mixer.png)
 
 ## Note
 
