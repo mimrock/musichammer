@@ -17,6 +17,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false # let the other OS finish so one run surfaces both platforms' errors
       matrix:
         include:
           - os: ubuntu-latest
@@ -31,11 +32,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx electron-builder ${{ matrix.args }}
-        env:
-          # electron-builder would otherwise try to auto-publish on tag builds;
-          # publishing is the release step's job, not the build's
-          EP_DRAFT: 'false'
+      # --publish never: electron-builder 26 auto-publishes whenever it detects
+      # CI (it fails the build if no GH_TOKEN is set, even off-tag); publishing
+      # is the release job's responsibility, not the build's
+      - run: npx electron-builder ${{ matrix.args }} --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os }}
