@@ -1,0 +1,8 @@
+# Keep the PyTorch family as a tested, mutually compatible set.
+#
+# The flavor (+cpu / +cu128) comes from bootstrap.js or setup.sh's selected
+# pytorch.org index. Public-version pins intentionally match either local
+# version: PEP 440 treats 2.11.0+cu128 as satisfying ==2.11.0.
+torch==2.11.0
+torchaudio==2.11.0
+torchvision==0.26.0

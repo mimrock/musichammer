@@ -8,6 +8,11 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Increment whenever an existing packaged environment must be rebuilt.
+// Revision 2 repairs v0.1.0/v0.1.1 environments whose later pip steps could
+// replace CUDA torch with a CPU-only wheel.
+const BOOTSTRAP_REV = 2;
+
 const PYTHON_PIN = {
   version: '3.12.13',
   tag: '20260718',
@@ -69,11 +74,17 @@ function readMarker() {
   }
 }
 
+function markerIsCurrent(marker) {
+  return Boolean(marker &&
+    marker.bootstrapRev === BOOTSTRAP_REV &&
+    marker.pythonTag === PYTHON_PIN.tag);
+}
+
 function needsBootstrap() {
   if (!app.isPackaged) return false;
   if (process.env.STEMAPP_PYTHON) return false; // user brought their own env
   const m = readMarker();
-  return !(m && m.pythonTag === PYTHON_PIN.tag && fs.existsSync(venvPython()));
+  return !(markerIsCurrent(m) && fs.existsSync(venvPython()));
 }
 
 function sidecarPython() {
@@ -100,8 +111,8 @@ function sidecarEnv() {
 }
 
 module.exports = {
-  PYTHON_PIN, WIN_FFMPEG_URL, isWin,
+  BOOTSTRAP_REV, PYTHON_PIN, WIN_FFMPEG_URL, isWin,
   dataRoot, pythonDir, basePython, venvDir, venvBin, venvPython,
-  ffmpegBinDir, markerFile, readMarker, needsBootstrap,
+  ffmpegBinDir, markerFile, readMarker, markerIsCurrent, needsBootstrap,
   sidecarDir, sidecarPython, sidecarEnv,
 };
