@@ -12,7 +12,7 @@ License: MIT.
 
 ## Download
 
-[v0.1.1](https://github.com/mimrock/musichammer/releases/tag/v0.1.1) binaries for windows (10/11) and linux (AppImage / .deb)
+[v0.1.2](https://github.com/mimrock/musichammer/releases/tag/v0.1.2) binaries for windows (10/11) and linux (AppImage / .deb)
 
 ## Models
 
