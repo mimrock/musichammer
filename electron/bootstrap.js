@@ -11,6 +11,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const rt = require('./runtime');
+const { flavorForDriver } = require('./torch-policy');
 
 const GiB = 1024 ** 3;
 
@@ -72,9 +73,8 @@ async function download(url, dest, expectedSha, onPct) {
   await fsp.rename(dest + '.part', dest);
 }
 
-// Same decision tree as setup.sh: no nvidia-smi → cpu; driver >= 580 → default
-// (CUDA 13) wheels; 525–579 → cu128 wheels; older → cpu with a warning (the
-// desktop app degrades instead of refusing like the script does).
+// Same decision tree as setup.sh. Always return an explicit pytorch.org index:
+// plain PyPI's Windows torch wheel is CPU-only even on a CUDA-capable machine.
 async function detectTorchFlavor(onLine) {
   let out = '';
   try {
@@ -82,20 +82,13 @@ async function detectTorchFlavor(onLine) {
       ['--query-gpu=driver_version', '--format=csv,noheader'], {},
       (l) => { out = out || l.trim(); });
   } catch {
-    onLine('no NVIDIA driver found — CPU processing');
-    return { mode: 'cpu', args: ['--index-url', 'https://download.pytorch.org/whl/cpu'] };
+    const flavor = flavorForDriver(null);
+    onLine(flavor.reason);
+    return flavor;
   }
-  const major = parseInt(out, 10);
-  if (major >= 580) {
-    onLine(`NVIDIA driver ${out}: CUDA (default wheels)`);
-    return { mode: 'cuda', args: [] };
-  }
-  if (major >= 525) {
-    onLine(`NVIDIA driver ${out}: CUDA (cu128 wheels)`);
-    return { mode: 'cuda', args: ['--index-url', 'https://download.pytorch.org/whl/cu128'] };
-  }
-  onLine(`NVIDIA driver ${out || '(unreadable)'} too old for current torch — CPU processing`);
-  return { mode: 'cpu', args: ['--index-url', 'https://download.pytorch.org/whl/cpu'] };
+  const flavor = flavorForDriver(out);
+  onLine(flavor.reason);
+  return flavor;
 }
 
 async function hasGit() {
@@ -211,14 +204,24 @@ async function runBootstrap(win, flavor) {
            ['-m', 'pip', 'install', '--no-input', '--progress-bar', 'raw', ...args],
            env ? { env } : {}, onl || pipProgress);
 
-  // -- torch first, so audio-separator can't drag in unwanted CUDA libs -----
+  // -- matched torch family, protected from every later pip invocation -------
+  const torchConstraints =
+    path.join(rt.sidecarDir(), 'torch-constraints.txt');
   stage('torch', `Installing PyTorch (${flavor.mode})`);
-  await pip(['torch', 'torchaudio', ...flavor.args]);
+  await pip(['--constraint', torchConstraints,
+             'torch', 'torchaudio', 'torchvision',
+             '--index-url', flavor.index]);
+  const constrainedEnv = (extra = {}) => ({
+    ...process.env,
+    ...extra,
+    PIP_CONSTRAINT: torchConstraints,
+  });
 
   // -- the separation stack + sidecar deps ----------------------------------
   stage('deps', 'Installing separation engine');
   await pip(['audio-separator[cpu]==0.44.2', 'bs-roformer-infer==0.1.1',
-             'melband-roformer-infer==0.1.1', 'packaging', 'soundfile']);
+             'melband-roformer-infer==0.1.1', 'packaging', 'soundfile'],
+            null, constrainedEnv());
   // requirements.txt stays the single source of truth: madmom (a git pin that
   // needs git + a C compiler at install time) is the only optional line in it,
   // everything else is essential and must never be hostage to a failed build.
@@ -227,14 +230,14 @@ async function runBootstrap(win, flavor) {
   const reqLines = fs.readFileSync(reqFile, 'utf8').split('\n')
     .map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   const madmom = reqLines.find((l) => l.startsWith('madmom'));
-  await pip(reqLines.filter((l) => l !== madmom));
+  await pip(reqLines.filter((l) => l !== madmom), null, constrainedEnv());
 
   let chords = false;
   const ccEnv = await findCompilerEnv();
   if (madmom && await hasGit() && ccEnv) {
     stage('chords', 'Installing chord recognition (optional)');
     try {
-      await pip([madmom], null, ccEnv);
+      await pip([madmom], null, constrainedEnv(ccEnv));
       chords = true;
     } catch {
       // ship without the chord readout; the sidecar degrades gracefully
@@ -248,6 +251,35 @@ async function runBootstrap(win, flavor) {
   stage('patch', 'Applying model patches');
   await runCmd(rt.venvPython(),
     [path.join(rt.sidecarDir(), 'patches', 'apply_melband_patch.py')], {}, line);
+
+  // A resolver warning or a false CUDA probe must never become a successful
+  // bootstrap marker. This is deliberately after every pip call: the bug in
+  // v0.1.1 happened when a later dependency silently replaced torch.
+  stage('verify', 'Verifying processing engine');
+  await runCmd(rt.venvPython(), ['-m', 'pip', 'check'], {}, line);
+  let probeJson = null;
+  const probeCode = [
+    'import json, torch, torchaudio, torchvision',
+    'print(json.dumps({',
+    '  "torch": torch.__version__,',
+    '  "torchaudio": torchaudio.__version__,',
+    '  "torchvision": torchvision.__version__,',
+    '  "cuda_available": bool(torch.cuda.is_available()),',
+    '}))',
+  ].join('\n');
+  await runCmd(rt.venvPython(), ['-c', probeCode], {}, (l) => {
+    line(l);
+    if (l.startsWith('{')) probeJson = JSON.parse(l);
+  });
+  if (!probeJson) {
+    throw new Error('PyTorch verification produced no result');
+  }
+  if (flavor.mode === 'cuda' && !probeJson.cuda_available) {
+    throw new Error(
+      'The NVIDIA driver was detected, but PyTorch could not start CUDA. ' +
+      'The engine was not marked ready; update/reinstall the NVIDIA driver ' +
+      'and press Retry.');
+  }
 
   // -- windows: static ffmpeg (assumed on PATH everywhere else) -------------
   let ffmpeg = null;
@@ -270,9 +302,11 @@ async function runBootstrap(win, flavor) {
   stage('finish', 'Finishing up');
   await fsp.rm(archive, { force: true }); // reclaim the archive's disk space
   await fsp.writeFile(rt.markerFile(), JSON.stringify({
+    bootstrapRev: rt.BOOTSTRAP_REV,
     pythonTag: rt.PYTHON_PIN.tag,
     pythonVersion: rt.PYTHON_PIN.version,
     torch: flavor.mode,
+    torchPackages: probeJson,
     chords,
     ffmpeg,
     completedAt: new Date().toISOString(),
