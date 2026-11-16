@@ -408,6 +408,8 @@ main { padding: 18px 22px 60px; }
 }
 .modal p { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 10px 0 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirm-scrim { z-index: 70; }
+.confirm-modal { z-index: 71; }
 
 /* --- models drawer ---------------------------------------------------------- */
 
@@ -500,6 +502,8 @@ main { padding: 18px 22px 60px; }
   border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
 }
+
+.mixer-actions { display: flex; gap: 8px; }
 
 .transport { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 #mixer-play { min-width: 100px; }
@@ -617,6 +621,116 @@ button.sq.s.active { background: var(--amber); border-color: var(--amber); color
   pointer-events: none;
 }
 
+/* --- export dialog --------------------------------------------------------- */
+
+.export-scrim { z-index: 60; }
+.export-modal {
+  z-index: 61;
+  width: min(500px, calc(100% - 40px));
+}
+.export-modal .export-intro { margin-bottom: 18px; }
+
+.export-section {
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.export-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+button.link-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 0;
+  font-size: 10px;
+}
+button.link-button:hover { color: var(--amber); }
+
+.export-track-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.export-track {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.export-track span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-track:has(input:checked) { border-color: #6b4d1d; }
+.export-track input,
+.export-choice input { accent-color: var(--amber); }
+
+.export-output {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.export-output legend { margin-bottom: 8px; }
+
+.export-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.export-choice:has(input:checked) { border-color: var(--amber); }
+.export-choice input { margin-top: 2px; }
+.export-choice span { display: flex; flex-direction: column; gap: 2px; }
+.export-choice b {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.export-choice small { color: var(--muted); font-size: 11px; }
+
+.export-format-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.export-format-row select { flex: 1; }
+
+.export-modal p.export-note {
+  min-height: 20px;
+  margin: -2px 0 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 /* --- toast --------------------------------------------------------------------- */
 
 .toast {
@@ -632,9 +746,18 @@ button.sq.s.active { background: var(--amber); border-color: var(--amber); color
   z-index: 100;
   max-width: 80%;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
+.toast button { padding: 4px 7px; white-space: nowrap; }
 
 .hidden { display: none; }
+
+@media (max-width: 680px) {
+  .export-track-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .export-output { grid-template-columns: 1fr; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

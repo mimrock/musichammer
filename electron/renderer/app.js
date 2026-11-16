@@ -7,12 +7,16 @@ let jobs = [];
 
 const $ = (id) => document.getElementById(id);
 
-function toast(msg) {
+function toast(msg, action = null) {
   const t = $('toast');
-  t.textContent = msg;
+  t.replaceChildren(document.createTextNode(msg));
+  if (action) {
+    const actionBtn = btn(action.label, 'ghost', action.onclick);
+    t.append(actionBtn);
+  }
   t.classList.remove('hidden');
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => t.classList.add('hidden'), 6000);
+  toast._timer = setTimeout(() => t.classList.add('hidden'), action ? 10000 : 6000);
 }
 
 async function api(path, opts = {}) {
@@ -21,7 +25,13 @@ async function api(path, opts = {}) {
   if (!r.ok) {
     let detail = r.statusText;
     try { detail = (await r.json()).detail || detail; } catch {}
-    throw new Error(detail);
+    const message = typeof detail === 'string'
+      ? detail
+      : detail.message || JSON.stringify(detail);
+    const error = new Error(message);
+    error.status = r.status;
+    error.detail = detail;
+    throw error;
   }
   return r.json();
 }
@@ -403,7 +413,8 @@ function renderSongs() {
 
 const STEM_ORDER = ['guitar', 'vocals', 'bass', 'drums', 'piano', 'other', 'rest', 'instrumental'];
 const mixer = { open: false, tracks: [], ctx: null, playing: false, raf: null, duration: 0,
-                rate: 1, bpm: null, songId: null, chords: null };
+                rate: 1, bpm: null, songId: null, modelId: null, songTitle: null,
+                chords: null };
 
 function stemUrl(songId, modelId, stem, kind) {
   const base = `${API}/songs/${encodeURIComponent(songId)}/stems/${encodeURIComponent(modelId)}/${encodeURIComponent(stem)}/${kind}`;
@@ -531,8 +542,12 @@ function seekTo(frac) {
 async function openMixer(song, modelId) {
   closeMixer();
   mixer.open = true;
+  mixer.songId = song.id;
+  mixer.modelId = modelId;
+  mixer.songTitle = song.title;
   mixer.ctx = mixer.ctx || new AudioContext();
   $('mixer').classList.remove('hidden');
+  $('mixer-export').disabled = true;
   $('mixer-title').textContent = song.title;
   const m = models.find((x) => x.id === modelId);
   $('mixer-model').textContent = ` — ${m ? m.display_name : modelId}`;
@@ -581,7 +596,7 @@ async function openMixer(song, modelId) {
     mixer.tracks.push(track);
   }
 
-  mixer.songId = song.id;
+  $('mixer-export').disabled = mixer.tracks.length === 0;
   mixer.bpm = null;
   setRate(1); // fresh song starts at real speed, BPM label hidden until known
   api(`/songs/${encodeURIComponent(song.id)}/bpm`)
@@ -628,8 +643,146 @@ async function openMixer(song, modelId) {
   mixerTick();
 }
 
+// --- export ----------------------------------------------------------------
+
+let exportBusy = false;
+
+function exportInputs() {
+  return [...$('export-tracks').querySelectorAll('input[type="checkbox"]')];
+}
+
+function selectedExportStems() {
+  return exportInputs().filter((input) => input.checked).map((input) => input.value);
+}
+
+function exportMode() {
+  return document.querySelector('input[name="export-mode"]:checked').value;
+}
+
+function setExportBusy(busy) {
+  exportBusy = busy;
+  $('export-ok').textContent = busy ? 'Exporting…' : 'Choose location…';
+  $('export-cancel').disabled = busy;
+  for (const input of exportInputs()) input.disabled = busy;
+  for (const input of document.querySelectorAll('input[name="export-mode"]')) input.disabled = busy;
+  $('export-format').disabled = busy;
+  $('export-toggle-all').disabled = busy;
+  updateExportControls();
+}
+
+function updateExportControls() {
+  const inputs = exportInputs();
+  const selected = inputs.filter((input) => input.checked).length;
+  $('export-toggle-all').textContent = selected === inputs.length ? 'Clear' : 'Select all';
+  $('export-ok').disabled = exportBusy || selected === 0;
+  $('export-note').textContent = exportMode() === 'mix'
+    ? 'Uses the current track levels. Exports at the original 100% tempo.'
+    : 'Exports the original stems at 100% tempo. Mixer levels are not applied.';
+}
+
+function setExportDialog(open) {
+  if (!open && exportBusy) return;
+  $('export-dialog').classList.toggle('hidden', !open);
+  $('export-scrim').classList.toggle('hidden', !open);
+  if (open) $('export-cancel').focus();
+}
+
+function openExportDialog() {
+  if (!mixer.open || !mixer.tracks.length) return;
+  $('export-title').textContent = `Export “${mixer.songTitle}”`;
+  $('export-tracks').replaceChildren();
+  const anySolo = mixer.tracks.some((track) => track.solo);
+  for (const track of mixer.tracks) {
+    const label = el('label', 'export-track');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = track.name;
+    input.checked = !track.muted && (!anySolo || track.solo);
+    input.onchange = updateExportControls;
+    label.append(input, el('span', null, track.name));
+    $('export-tracks').append(label);
+  }
+  document.querySelector('input[name="export-mode"][value="separate"]').checked = true;
+  $('export-format').value = 'flac';
+  setExportBusy(false);
+  setExportDialog(true);
+}
+
+async function runExport(destination = null, overwrite = false) {
+  const stems = selectedExportStems();
+  if (!stems.length) return;
+  const mode = exportMode();
+  const format = $('export-format').value;
+  if (!destination) {
+    const picked = await window.stemapp.exportAudioDialog({
+      mode, format, title: mixer.songTitle,
+    });
+    if (!picked) return;
+    destination = picked.path;
+    // A native save dialog has already asked about replacing this file.
+    overwrite = picked.overwriteConfirmed;
+  }
+
+  const gains = {};
+  for (const track of mixer.tracks) {
+    if (stems.includes(track.name)) gains[track.name] = track.vol;
+  }
+
+  setExportBusy(true);
+  try {
+    const result = await api(
+      `/songs/${encodeURIComponent(mixer.songId)}/stems/${encodeURIComponent(mixer.modelId)}/export`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stems, mode, format, destination, gains, overwrite }),
+      },
+    );
+    setExportBusy(false);
+    setExportDialog(false);
+    const count = result.files.length;
+    toast(`Exported ${count} ${count === 1 ? 'file' : 'files'}`, {
+      label: 'Show folder',
+      onclick: () => window.stemapp.showItemInFolder(result.files[0]),
+    });
+  } catch (error) {
+    setExportBusy(false);
+    if (error.status === 409 && error.detail && error.detail.exists) {
+      const count = error.detail.exists.length;
+      const ok = await askConfirm({
+        title: 'Replace existing export?',
+        body: `${count} ${count === 1 ? 'file already exists' : 'files already exist'} ` +
+              'in that location. Replace the existing export?',
+        okLabel: count === 1 ? 'Replace file' : 'Replace files',
+      });
+      if (ok) await runExport(destination, true);
+      return;
+    }
+    toast(`Export failed: ${error.message}`);
+  }
+}
+
+for (const input of document.querySelectorAll('input[name="export-mode"]')) {
+  input.onchange = updateExportControls;
+}
+$('export-format').onchange = updateExportControls;
+$('export-toggle-all').onclick = () => {
+  const inputs = exportInputs();
+  const value = !inputs.every((input) => input.checked);
+  for (const input of inputs) input.checked = value;
+  updateExportControls();
+};
+$('export-cancel').onclick = () => setExportDialog(false);
+$('export-scrim').onclick = () => setExportDialog(false);
+$('export-ok').onclick = () => runExport().catch((error) => {
+  setExportBusy(false);
+  toast(`Export failed: ${error.message}`);
+});
+$('mixer-export').onclick = openExportDialog;
+
 function closeMixer() {
   if (!mixer.open) return;
+  setExportDialog(false);
   setPlaying(false);
   cancelAnimationFrame(mixer.raf);
   for (const t of mixer.tracks) {
@@ -640,6 +793,9 @@ function closeMixer() {
   mixer.tracks = [];
   mixer.duration = 0;
   mixer.open = false;
+  mixer.songId = null;
+  mixer.modelId = null;
+  mixer.songTitle = null;
   mixer.chords = null;
   $('chord-box').classList.add('hidden');
   $('mixer').classList.add('hidden');
@@ -751,6 +907,7 @@ $('drawer-scrim').onclick = () => setDrawer(false);
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!$('confirm').classList.contains('hidden')) setConfirm(false);
+    else if (!$('export-dialog').classList.contains('hidden')) setExportDialog(false);
     else if (mixer.open) closeMixer();
     else setDrawer(false);
   }

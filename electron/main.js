@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
 const path = require('path');
@@ -87,6 +87,70 @@ ipcMain.handle('dialog:openAudio', async () => {
     ],
   });
   return res.canceled ? [] : res.filePaths;
+});
+
+function safeExportName(value) {
+  const cleaned = String(value || 'audio')
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[ .]+$/g, '')
+    .trim()
+    .slice(0, 120);
+  return cleaned || 'audio';
+}
+
+ipcMain.handle('dialog:exportAudio', async (_event, options) => {
+  const mode = options && options.mode;
+  const format = options && options.format;
+  if (!['separate', 'mix'].includes(mode) || !['flac', 'wav', 'mp3'].includes(format)) {
+    throw new Error('Invalid export options');
+  }
+
+  const win = BrowserWindow.getFocusedWindow();
+  const musicDir = app.getPath('music');
+  if (mode === 'separate') {
+    // No promptToCreate: on Windows it hands back a typed-in folder that
+    // does not exist yet. The picker has its own "New folder" button.
+    const properties = ['openDirectory'];
+    if (process.platform === 'darwin') properties.push('createDirectory');
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Export stem files',
+      buttonLabel: 'Export here',
+      defaultPath: musicDir,
+      properties,
+    });
+    return res.canceled ? null : { path: res.filePaths[0], overwriteConfirmed: false };
+  }
+
+  const extension = `.${format}`;
+  const defaultName = `${safeExportName(options.title)} - mix${extension}`;
+  const res = await dialog.showSaveDialog(win, {
+    title: 'Export combined track',
+    buttonLabel: 'Export',
+    defaultPath: path.join(musicDir, defaultName),
+    filters: [{
+      name: `${format.toUpperCase()} audio`,
+      extensions: [format],
+    }],
+    // Windows and macOS always ask before replacing a file; GTK only does
+    // when told to.
+    properties: ['showOverwriteConfirmation'],
+  });
+  if (res.canceled || !res.filePath) return null;
+  // The native dialog already asked about the exact path it returned, so the
+  // app must not ask again. A path completed here was never checked.
+  const complete = res.filePath.toLowerCase().endsWith(extension);
+  return {
+    path: complete ? res.filePath : res.filePath + extension,
+    overwriteConfirmed: complete,
+  };
+});
+
+ipcMain.handle('shell:showItem', (_event, filePath) => {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) {
+    throw new Error('Invalid export path');
+  }
+  shell.showItemInFolder(filePath);
 });
 
 app.whenReady().then(async () => {

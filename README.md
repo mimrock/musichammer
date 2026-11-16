@@ -12,7 +12,7 @@ License: MIT.
 
 ## Download
 
-[v0.1.2](https://github.com/mimrock/musichammer/releases/tag/v0.1.2) binaries for windows (10/11) and linux (AppImage / .deb)
+[v0.2.0](https://github.com/mimrock/musichammer/releases/tag/v0.2.0) binaries for windows (10/11) and linux (AppImage / .deb)
 
 ## Models
 
@@ -42,6 +42,11 @@ Supported stem separator models are:
 	- No declared license
 	- Only separates 2 stems (guitar, everything else)
 	- Guitar separation quality (especially for distorted guitar) is close to BS-RoFormer SW
+
+## Export
+
+  Stems can be saved out of the mixer with the Export… button. Pick the tracks you want, then either save them as separate files or mix them into one file using the current volume sliders, for example a backing track without the guitar.
+  Formats are FLAC or WAV (lossless) and MP3 (lossy, 256 kbps, for when the files need to be small). Exports are always at the original tempo.
 	
 ## Screens
 

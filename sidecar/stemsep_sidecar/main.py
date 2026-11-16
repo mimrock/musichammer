@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from . import config, downloader, jobs, library, registry
+from . import config, downloader, exporter, jobs, library, registry
 
 
 @asynccontextmanager
@@ -56,6 +56,15 @@ class JobRequest(BaseModel):
     song_id: str
     model_id: str
     device: str = "cpu"
+
+
+class ExportRequest(BaseModel):
+    stems: list[str]
+    mode: str
+    format: str
+    destination: str
+    gains: dict[str, float] = Field(default_factory=dict)
+    overwrite: bool = False
 
 
 @app.get("/health")
@@ -169,6 +178,27 @@ def stem_audio(song_id: str, model_id: str, stem: str):
 @app.get("/songs/{song_id}/stems/{model_id}/{stem}/peaks")
 def stem_peaks(song_id: str, model_id: str, stem: str, points: int = 1000):
     return library.peaks(_stem_or_404(song_id, model_id, stem), min(max(points, 50), 4000))
+
+
+@app.post("/songs/{song_id}/stems/{model_id}/export")
+def export_stems(song_id: str, model_id: str, req: ExportRequest):
+    try:
+        return exporter.export_stems(
+            song_id, model_id, req.stems, req.mode, req.format,
+            req.destination, req.gains, req.overwrite,
+        )
+    except exporter.ExportConflictError as e:
+        raise HTTPException(409, {
+            "exists": [str(path) for path in e.paths],
+            "message": str(e),
+        })
+    except KeyError as e:
+        raise HTTPException(404, e.args[0])
+    except (OSError, ValueError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        # Never leave the user with a bare "Internal Server Error".
+        raise HTTPException(500, f"unexpected {type(e).__name__}: {e}")
 
 
 @app.get("/jobs")

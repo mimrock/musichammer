@@ -32,8 +32,8 @@
     <div id="songs-list"></div>
   </main>
 
-  <div id="confirm-scrim" class="scrim hidden"></div>
-  <div id="confirm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div id="confirm-scrim" class="scrim confirm-scrim hidden"></div>
+  <div id="confirm" class="modal confirm-modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
     <h2 id="confirm-title"></h2>
     <p id="confirm-body"></p>
     <div class="modal-actions">
@@ -61,7 +61,10 @@
           <span id="mixer-title" class="song-title"></span>
           <span id="mixer-model" class="song-meta"></span>
         </div>
-        <button id="mixer-close" class="ghost">✕ Close</button>
+        <div class="mixer-actions">
+          <button id="mixer-export" class="ghost">Export…</button>
+          <button id="mixer-close" class="ghost">✕ Close</button>
+        </div>
       </div>
       <div class="transport">
         <button id="mixer-play" class="primary">▶ Play</button>
@@ -85,6 +88,49 @@
       <div id="mixer-tracks"></div>
     </div>
   </section>
+
+  <div id="export-scrim" class="scrim export-scrim hidden"></div>
+  <div id="export-dialog" class="modal export-modal hidden" role="dialog"
+       aria-modal="true" aria-labelledby="export-title">
+    <h2 id="export-title">Export stems</h2>
+    <p class="export-intro">Choose one stem, several separate files, or combine
+    selected stems into a new track.</p>
+
+    <div class="export-section">
+      <div class="export-section-head">
+        <span class="sep-label">Tracks</span>
+        <button id="export-toggle-all" class="link-button" type="button">Clear</button>
+      </div>
+      <div id="export-tracks" class="export-track-grid"></div>
+    </div>
+
+    <fieldset class="export-section export-output">
+      <legend class="sep-label">Output</legend>
+      <label class="export-choice">
+        <input type="radio" name="export-mode" value="separate" checked />
+        <span><b>Separate files</b><small>One file per selected stem</small></span>
+      </label>
+      <label class="export-choice">
+        <input type="radio" name="export-mode" value="mix" />
+        <span><b>Mix into one file</b><small>Combine the selected stems</small></span>
+      </label>
+    </fieldset>
+
+    <div class="export-section export-format-row">
+      <label class="sep-label" for="export-format">Format</label>
+      <select id="export-format">
+        <option value="flac">FLAC — lossless, smaller</option>
+        <option value="wav">WAV — widest compatibility</option>
+        <option value="mp3">MP3 — lossy 256 kbps, smallest</option>
+      </select>
+    </div>
+
+    <p id="export-note" class="export-note"></p>
+    <div class="modal-actions">
+      <button id="export-cancel" class="ghost">Cancel</button>
+      <button id="export-ok" class="primary">Choose location…</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
